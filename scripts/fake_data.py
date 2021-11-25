@@ -1,3 +1,8 @@
+from rest_framework import serializers
+from rest_framework.serializers import Serializer
+from books.api.serializers import BookSerializer
+from pprint import pprint
+import requests
 import django
 from faker import Faker
 from django.contrib.auth.models import User
@@ -29,3 +34,32 @@ def set_user():
 
     user.save('tesing321..')
     user.save()
+
+
+def book_add(topic):
+    fake = Faker(['en_US'])
+    url = 'https://openlibrary.org/search.json'
+    payload = {'q': topic}
+    response = requests.get(url, params=payload)
+
+    if response.status_code != 200:
+        print('Wrong request!', response.status_code)
+        return
+    jsn = response.json()
+
+    books = jsn.get('docs')
+    for book in books:
+        book_name = book.get('title')
+        data = {
+            'name': book_name,
+            'author': book.get('author_name')[0],
+            'preface': f'{fake.paragraphs(nb=1)}',
+            'publication_date': fake.date_time_between(start_date='-10y', end_date='now', tzinfo=None)
+        }
+
+        serializer = BookSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            print("Saved", book_name)
+        else:
+            continue
